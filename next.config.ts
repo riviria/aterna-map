@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   devIndicators: false,
 
   // Next.js 16 memblokir request ke asset internal (/_next/*, termasuk

@@ -81,7 +81,18 @@ export default function AternaMap() {
   // mount, dibaca & dikonsumsi oleh effect popup-position di bawah).
   const pendingZoomLocationRef = useRef<string | null>(getDeepLinkLocationId());
 
-  const [initialScale, setInitialScale] = useState<number | null>(null);
+  const [initialScale, setInitialScale] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    if (width > 0 && height > 0) {
+      const scaleX = width / MAP_WIDTH;
+      const scaleY = height / MAP_HEIGHT;
+      const coverScale = Math.max(scaleX, scaleY);
+      return coverScale > 0 ? coverScale * 1.01 : null;
+    }
+    return null;
+  });
 
   const [debugPosition, setDebugPosition] = useState({
     x: Math.round(MAP_WIDTH / 2),
@@ -133,10 +144,10 @@ export default function AternaMap() {
   useEffect(() => {
     const updateScale = () => {
       const container = containerRef.current;
-      if (!container) return;
+      const viewportWidth = container?.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 0);
+      const viewportHeight = container?.clientHeight || (typeof window !== "undefined" ? window.innerHeight : 0);
 
-      const viewportWidth = container.clientWidth;
-      const viewportHeight = container.clientHeight;
+      if (viewportWidth <= 0 || viewportHeight <= 0) return;
 
       const scaleX = viewportWidth / MAP_WIDTH;
       const scaleY = viewportHeight / MAP_HEIGHT;
@@ -144,10 +155,15 @@ export default function AternaMap() {
       // Map selalu memenuhi viewport
       const coverScale = Math.max(scaleX, scaleY);
 
+      if (coverScale <= 0 || !Number.isFinite(coverScale)) return;
+
       // Tambahan kecil agar tidak muncul garis kosong 1px di pinggir
       const safeScale = coverScale * 1.01;
 
-      setInitialScale(safeScale);
+      setInitialScale((prev) => {
+        if (prev !== null && Math.abs(prev - safeScale) < 0.005) return prev;
+        return safeScale;
+      });
     };
 
     updateScale();
@@ -421,7 +437,7 @@ export default function AternaMap() {
       className="relative h-screen w-screen overflow-hidden bg-[#151c20]"
     >
       {/* MAP */}
-      {initialScale !== null && (
+      {initialScale !== null && initialScale > 0 && (
         <TransformWrapper
           ref={transformRef}
           initialScale={initialScale}
@@ -452,6 +468,7 @@ export default function AternaMap() {
                 priority
                 draggable={false}
                 sizes="100vw"
+                referrerPolicy="no-referrer"
                 className="pointer-events-none select-none object-fill"
               />
 

@@ -53,6 +53,7 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
               fill
               sizes="(max-width: 640px) calc(100vw - 32px), 340px"
               draggable={false}
+              referrerPolicy="no-referrer"
               className="select-none object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#252d33] via-transparent to-transparent" />

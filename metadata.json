@@ -1,0 +1,6 @@
+{
+  "name": "Aterna Map",
+  "description": "Interactive World Map of Aterna",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

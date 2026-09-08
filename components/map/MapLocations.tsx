@@ -6,6 +6,7 @@ import MapMarker from "./MapMarker";
 type MapLocationsProps = {
   locations: MapLocation[];
   activeLocationId: string | null;
+  focusedLocationId: string | null;
   supportsHover: boolean;
   onOpen: (locationId: string) => void;
   onScheduleClose: () => void;
@@ -13,13 +14,10 @@ type MapLocationsProps = {
   onMarkerRef: (locationId: string, element: HTMLButtonElement | null) => void;
 };
 
-// Merender marker berdasarkan daftar `locations` yang diterima (sudah
-// difilter oleh AternaMap.tsx sesuai chip tipe yang aktif). Tidak
-// menyimpan state sendiri — semua state (active location, hover, dsb)
-// dikontrol oleh AternaMap.tsx.
 export default function MapLocations({
   locations,
   activeLocationId,
+  focusedLocationId,
   supportsHover,
   onOpen,
   onScheduleClose,
@@ -33,6 +31,7 @@ export default function MapLocations({
           key={location.id}
           location={location}
           active={location.id === activeLocationId}
+          focused={location.id === focusedLocationId}
           supportsHover={supportsHover}
           onOpen={() => onOpen(location.id)}
           onLeave={onScheduleClose}

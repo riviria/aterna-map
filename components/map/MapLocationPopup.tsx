@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState } from "react";
 
 import type { MapLocation, NationProfile } from "./data/locations";
 
@@ -12,41 +12,95 @@ interface MapLocationPopupProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onClose: () => void;
+  onViewDetails: () => void;
 }
 
-// Urutan & label baris tabel khusus nation, sesuai referensi profil dunia.
 const NATION_PROFILE_ROWS: { label: string; key: keyof NationProfile }[] = [
   { label: "Form:", key: "form" },
   { label: "Capital:", key: "capital" },
   { label: "Race Composition:", key: "raceComposition" },
 ];
 
-// forwardRef: AternaMap perlu ref ke elemen ini untuk mengukur lebar/
-// tinggi SEBENARNYA (offsetWidth/offsetHeight), supaya perhitungan
-// posisi & clamp popup akurat di berbagai ukuran layar — tidak lagi
-// bergantung pada konstanta lebar/tinggi yang ditebak di awal.
+function ShareIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <path d="M12 16V4" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+    </svg>
+  );
+}
+
 const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
   function MapLocationPopup(
-    { location, x, y, onMouseEnter, onMouseLeave, onClose },
+    { location, x, y, onMouseEnter, onMouseLeave, onClose, onViewDetails },
     ref
   ) {
-    // Disimpan ke variabel lokal (bukan langsung location.nationProfile)
-    // supaya TypeScript tetap bisa narrow tipe-nya di dalam .map() di bawah.
     const nationProfile = location.nationProfile;
+    const [isImageLoaded, setIsImageLoaded] = useState(false);
+    const [shareFeedback, setShareFeedback] = useState<"copied" | "error" | null>(null);
+
+    useEffect(() => {
+      setIsImageLoaded(false);
+      setShareFeedback(null);
+    }, [location.id]);
+
+    useEffect(() => {
+      if (!shareFeedback) return;
+
+      const timer = window.setTimeout(() => setShareFeedback(null), 1800);
+      return () => window.clearTimeout(timer);
+    }, [shareFeedback]);
+
+    const handleShare = async () => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("location", location.id);
+
+      const shareData = {
+        title: location.name,
+        text: `Explore ${location.name} in the Aterna Interactive World Atlas.`,
+        url: url.toString(),
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+          return;
+        }
+
+        await navigator.clipboard.writeText(shareData.url);
+        setShareFeedback("copied");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setShareFeedback("error");
+      }
+    };
 
     return (
       <div
         ref={ref}
-        className="absolute z-[999] w-[340px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] overflow-x-hidden overflow-y-auto rounded-3xl border border-white/10 bg-[#252d33] shadow-2xl"
+        className="absolute z-[999] w-[340px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] overflow-x-hidden overflow-y-auto rounded-3xl border border-white/10 bg-[#252d33] shadow-2xl transition-opacity duration-200"
         style={{ left: x, top: y }}
-        onMouseEnter={() => onMouseEnter()}
-        onMouseLeave={() => onMouseLeave()}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
-        {/* THUMBNAIL */}
         {location.thumbnail && (
-          <div className="relative h-36 w-full overflow-hidden sm:h-[170px]">
+          <div className="relative h-36 w-full overflow-hidden bg-white/5 sm:h-[170px]">
+            {!isImageLoaded && (
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/10 via-white/5 to-transparent" />
+            )}
+
             <Image
               src={location.thumbnail}
               alt={location.name}
@@ -54,15 +108,16 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
               sizes="(max-width: 640px) calc(100vw - 32px), 340px"
               draggable={false}
               referrerPolicy="no-referrer"
-              className="select-none object-cover"
+              onLoad={() => setIsImageLoaded(true)}
+              className={`select-none object-cover transition duration-500 ease-out ${
+                isImageLoaded ? "scale-100 opacity-100 blur-0" : "scale-105 opacity-0 blur-sm"
+              }`}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#252d33] via-transparent to-transparent" />
           </div>
         )}
 
-        {/* CONTENT */}
         <div className="relative px-5 pb-6 pt-5 sm:px-7 sm:pb-7 sm:pt-6">
-          {/* CLOSE BUTTON */}
           <button
             type="button"
             aria-label="Close popup"
@@ -75,17 +130,14 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
             ×
           </button>
 
-          {/* LOCATION TYPE */}
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.35em] text-white/50">
             {location.type}
           </p>
 
-          {/* LOCATION NAME */}
           <h2 className="pr-8 text-2xl font-bold tracking-tight text-white sm:text-3xl">
             {location.name}
           </h2>
 
-          {/* DESCRIPTION — nation pakai tabel profil, tipe lain tetap paragraf biasa */}
           {location.type === "nation" && nationProfile ? (
             <div className="mt-3 overflow-hidden rounded-xl border border-white/10 sm:mt-3">
               {NATION_PROFILE_ROWS.map(({ label, key }) => (
@@ -110,15 +162,32 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
 
           <div className="my-5 h-px w-full bg-white/10 sm:my-6" />
 
-          {/* VIEW DETAILS */}
-          <a
-            href={location.href}
-            onClick={(event) => event.stopPropagation()}
-            className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.25em] text-white transition hover:text-red-400 sm:text-sm"
-          >
-            VIEW DETAILS
-            <span className="text-lg">→</span>
-          </a>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/65 transition hover:text-white"
+            >
+              <ShareIcon />
+              {shareFeedback === "copied"
+                ? "Link copied"
+                : shareFeedback === "error"
+                  ? "Share failed"
+                  : "Share"}
+            </button>
+
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewDetails();
+              }}
+              className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.25em] text-white transition hover:text-red-400 sm:text-sm"
+            >
+              VIEW DETAILS
+              <span className="text-lg">→</span>
+            </button>
+          </div>
         </div>
       </div>
     );

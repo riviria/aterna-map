@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   TransformComponent,
   TransformWrapper,
@@ -9,12 +9,25 @@ import {
 } from "react-zoom-pan-pinch";
 
 import MapCoordinateDebugger from "./MapCoordinateDebugger";
+import MapFullscreenButton from "./MapFullscreenButton";
 import MapCoordinatePanel from "./MapCoordinatePanel";
+import MapLoadingOverlay from "./MapLoadingOverlay";
+import MapLabel from "./MapLabel";
+import MapMinimap from "./MapMinimap";
 import MapLocationPopup from "./MapLocationPopup";
+import MapLocationDetails from "./MapLocationDetails";
 import MapLocations from "./MapLocations";
 import MapResetButton from "./MapResetButton";
 import MapSearchPanel from "./MapSearchPanel";
 import { locations, type LocationType, type MapLocation } from "./data/locations";
+import {
+  clearSavedDetailState,
+  clearSavedMapState,
+  readSavedDetailState,
+  readSavedMapState,
+  saveDetailState,
+  saveMapState,
+} from "./data/mapPersistence";
 
 // Ukuran asli map
 const MAP_WIDTH = 1912;
@@ -35,6 +48,7 @@ const FOCUS_ZOOM_MULTIPLIER = 2.5;
 const ALL_LOCATION_TYPES: LocationType[] = ["nation", "city", "landmark", "geography"];
 
 const LOCATION_QUERY_PARAM = "location";
+const MAP_STATE_PERSIST_DEBOUNCE = 120;
 
 type PopupPosition = {
   x: number;
@@ -57,6 +71,15 @@ function getDeepLinkLocationId(): string | null {
 }
 
 export default function AternaMap() {
+  // Server dan client memakai snapshot yang sama saat hydration.
+  // Setelah hydration selesai, nilai client berubah menjadi true tanpa
+  // memerlukan setState di dalam useEffect.
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Ref ke TransformWrapper, dipakai untuk zoomToElement() dan
@@ -75,11 +98,16 @@ export default function AternaMap() {
   const popupRef = useRef<HTMLDivElement>(null);
 
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestTransformRef = useRef({ scale: 1, positionX: 0, positionY: 0 });
 
   // Menyimpan id lokasi yang seharusnya di-zoom begitu marker-nya
   // tersedia di DOM (diisi oleh focusLocation ATAU deep link URL saat
   // mount, dibaca & dikonsumsi oleh effect popup-position di bawah).
-  const pendingZoomLocationRef = useRef<string | null>(getDeepLinkLocationId());
+  const savedMapState = useMemo(() => readSavedMapState(), []);
+  const pendingZoomLocationRef = useRef<string | null>(
+    savedMapState ? null : getDeepLinkLocationId()
+  );
 
   const [initialScale, setInitialScale] = useState<number | null>(() => {
     if (typeof window === "undefined") return null;
@@ -103,10 +131,17 @@ export default function AternaMap() {
   const [isDraggingDebugger, setIsDraggingDebugger] = useState(false);
 
   const [supportsHover, setSupportsHover] = useState(false);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [activeLocationId, setActiveLocationId] = useState<string | null>(
     getDeepLinkLocationId
   );
   const [popupPosition, setPopupPosition] = useState<PopupPosition | null>(null);
+  const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
+  const [transformState, setTransformState] = useState({ scale: 1, positionX: 0, positionY: 0 });
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [detailLocationId, setDetailLocationId] = useState<string | null>(() =>
+    readSavedDetailState()?.locationId ?? null
+  );
 
   // Sumber kebenaran untuk URL (?location=id). Dipisah dari
   // activeLocationId supaya hover TIDAK ikut menyentuh URL — hanya
@@ -159,6 +194,11 @@ export default function AternaMap() {
 
       // Tambahan kecil agar tidak muncul garis kosong 1px di pinggir
       const safeScale = coverScale * 1.01;
+
+      setViewportSize((current) => {
+        if (current.width === viewportWidth && current.height === viewportHeight) return current;
+        return { width: viewportWidth, height: viewportHeight };
+      });
 
       setInitialScale((prev) => {
         if (prev !== null && Math.abs(prev - safeScale) < 0.005) return prev;
@@ -257,11 +297,28 @@ export default function AternaMap() {
       });
 
       pendingZoomLocationRef.current = locationId;
+      setFocusedLocationId(locationId);
+      window.setTimeout(() => setFocusedLocationId((current) => current === locationId ? null : current), 1400);
       setActiveLocationId(locationId);
       setUrlLocationId(locationId);
     },
     [clearCloseTimer]
   );
+
+
+  const openLocationDetails = useCallback((locationId: string) => {
+    const target = locations.find((location) => location.id === locationId);
+    if (!target) return;
+
+    clearCloseTimer();
+    setDetailLocationId(locationId);
+    saveDetailState({ locationId });
+  }, [clearCloseTimer]);
+
+  const closeLocationDetails = useCallback(() => {
+    setDetailLocationId(null);
+    clearSavedDetailState();
+  }, []);
 
   const toggleType = useCallback((type: LocationType) => {
     setActiveTypes((current) => {
@@ -279,6 +336,7 @@ export default function AternaMap() {
 
   const handleResetView = useCallback(() => {
     closeLocation();
+    clearSavedMapState();
     transformRef.current?.resetTransform();
   }, [closeLocation]);
 
@@ -303,6 +361,27 @@ export default function AternaMap() {
   const activeLocation = locations.find(
     (location): location is MapLocation => location.id === activeLocationId
   );
+
+  const detailLocation = locations.find(
+    (location): location is MapLocation => location.id === detailLocationId
+  );
+
+  const restoredTransform = useMemo(() => {
+    if (!savedMapState || initialScale === null || typeof window === "undefined") {
+      return { scale: initialScale ?? 1, positionX: 0, positionY: 0 };
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const zoomRatio = Math.max(1, Math.min(4, savedMapState.zoomRatio));
+    const scale = initialScale * zoomRatio;
+
+    return {
+      scale,
+      positionX: viewportWidth / 2 - savedMapState.centerX * scale,
+      positionY: viewportHeight / 2 - savedMapState.centerY * scale,
+    };
+  }, [initialScale, savedMapState]);
 
   // Popup berada DI LUAR TransformComponent, jadi tidak ikut zoom/transform.
   // Posisi marker dibaca lewat getBoundingClientRect() agar popup tetap
@@ -423,6 +502,59 @@ export default function AternaMap() {
     window.history.replaceState(null, "", url);
   }, [urlLocationId]);
 
+  const persistMapState = useCallback(() => {
+    const viewport = containerRef.current;
+    const currentTransform = latestTransformRef.current;
+
+    if (!viewport || initialScale === null) return;
+
+    const viewportWidth = viewport.clientWidth || window.innerWidth;
+    const viewportHeight = viewport.clientHeight || window.innerHeight;
+
+    if (viewportWidth <= 0 || viewportHeight <= 0 || currentTransform.scale <= 0) return;
+
+    const zoomRatio = currentTransform.scale / initialScale;
+    const clampedZoomRatio = Math.max(1, Math.min(4, zoomRatio));
+    const centerX = (viewportWidth / 2 - currentTransform.positionX) / currentTransform.scale;
+    const centerY = (viewportHeight / 2 - currentTransform.positionY) / currentTransform.scale;
+
+    saveMapState({
+      zoomRatio: clampedZoomRatio,
+      centerX,
+      centerY,
+    });
+  }, [initialScale]);
+
+  const queueMapStateSave = useCallback(() => {
+    if (mapPersistTimerRef.current) {
+      clearTimeout(mapPersistTimerRef.current);
+    }
+
+    mapPersistTimerRef.current = setTimeout(() => {
+      persistMapState();
+      mapPersistTimerRef.current = null;
+    }, MAP_STATE_PERSIST_DEBOUNCE);
+  }, [persistMapState]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      if (mapPersistTimerRef.current) {
+        clearTimeout(mapPersistTimerRef.current);
+        mapPersistTimerRef.current = null;
+      }
+      persistMapState();
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      if (mapPersistTimerRef.current) {
+        clearTimeout(mapPersistTimerRef.current);
+      }
+    };
+  }, [persistMapState]);
+
   useEffect(() => {
     return () => {
       if (closeTimerRef.current) {
@@ -437,17 +569,37 @@ export default function AternaMap() {
       className="relative h-screen w-screen overflow-hidden bg-[#151c20]"
     >
       {/* MAP */}
-      {initialScale !== null && initialScale > 0 && (
+      {isMounted && initialScale !== null && initialScale > 0 && (
         <TransformWrapper
           ref={transformRef}
-          initialScale={initialScale}
+          initialScale={restoredTransform.scale}
           minScale={initialScale}
           maxScale={initialScale * 4}
-          centerOnInit
+          centerOnInit={!savedMapState}
           limitToBounds
           disablePadding
           panning={{ disabled: isDraggingDebugger }}
           velocityAnimation={{ disabled: true }}
+          initialPositionX={restoredTransform.positionX}
+          initialPositionY={restoredTransform.positionY}
+          onTransform={(ref, state) => {
+            latestTransformRef.current = {
+              scale: state.scale,
+              positionX: state.positionX,
+              positionY: state.positionY,
+            };
+            queueMapStateSave();
+
+            setTransformState((current) => {
+              if (
+                Math.abs(current.scale - state.scale) < 0.0001 &&
+                Math.abs(current.positionX - state.positionX) < 0.1 &&
+                Math.abs(current.positionY - state.positionY) < 0.1
+              ) return current;
+
+              return { scale: state.scale, positionX: state.positionX, positionY: state.positionY };
+            });
+          }}
           wheel={{ step: 0.0005 }}
           pinch={{ step: 5 }}
         >
@@ -469,18 +621,38 @@ export default function AternaMap() {
                 draggable={false}
                 sizes="100vw"
                 referrerPolicy="no-referrer"
-                className="pointer-events-none select-none object-fill"
+                onLoad={() => setIsMapLoaded(true)}
+                className={`pointer-events-none select-none object-fill transition duration-700 ease-out ${
+                  isMapLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
+                }`}
               />
 
-              <MapLocations
-                locations={visibleLocations}
-                activeLocationId={activeLocationId}
-                supportsHover={supportsHover}
-                onOpen={openLocation}
-                onScheduleClose={scheduleClose}
-                onToggle={toggleLocation}
-                onMarkerRef={registerMarkerRef}
-              />
+              <div
+                className={`transition-all duration-500 ease-out ${
+                  isMapLoaded
+                    ? "translate-y-0 scale-100 opacity-100"
+                    : "translate-y-1 scale-95 opacity-0"
+                }`}
+              >
+                <MapLocations
+                  locations={visibleLocations}
+                  activeLocationId={activeLocationId}
+                  focusedLocationId={focusedLocationId}
+                  supportsHover={supportsHover}
+                  onOpen={openLocation}
+                  onScheduleClose={scheduleClose}
+                  onToggle={toggleLocation}
+                  onMarkerRef={registerMarkerRef}
+                />
+
+                {isMapLoaded && initialScale !== null && visibleLocations.map((location) => (
+                  <MapLabel
+                    key={location.id}
+                    location={location}
+                    zoomRatio={transformState.scale / initialScale}
+                  />
+                ))}
+              </div>
 
               <MapCoordinateDebugger
                 width={MAP_WIDTH}
@@ -495,6 +667,20 @@ export default function AternaMap() {
         </TransformWrapper>
       )}
 
+      <MapLoadingOverlay isVisible={!isMapLoaded} />
+
+      {initialScale !== null && viewportSize.width > 0 && viewportSize.height > 0 && (
+        <MapMinimap
+          mapWidth={MAP_WIDTH}
+          mapHeight={MAP_HEIGHT}
+          viewportWidth={viewportSize.width}
+          viewportHeight={viewportSize.height}
+          scale={transformState.scale || initialScale}
+          positionX={transformState.positionX}
+          positionY={transformState.positionY}
+        />
+      )}
+
       {/* FIXED COORDINATE PANEL — tidak ikut zoom */}
       <MapCoordinatePanel position={debugPosition} />
 
@@ -505,6 +691,9 @@ export default function AternaMap() {
         onToggleType={toggleType}
         onSelectLocation={focusLocation}
       />
+
+      {/* FIXED FULLSCREEN BUTTON — tidak ikut zoom */}
+      <MapFullscreenButton targetRef={containerRef} />
 
       {/* FIXED RESET VIEW BUTTON — tidak ikut zoom */}
       <MapResetButton onReset={handleResetView} />
@@ -521,6 +710,15 @@ export default function AternaMap() {
             if (supportsHover) scheduleClose();
           }}
           onClose={closeLocation}
+          onViewDetails={() => openLocationDetails(activeLocation.id)}
+        />
+      )}
+
+      {isMounted && detailLocation && (
+        <MapLocationDetails
+          key={detailLocation.id}
+          location={detailLocation}
+          onClose={closeLocationDetails}
         />
       )}
     </main>

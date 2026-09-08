@@ -17,8 +17,6 @@ export type LocationDetail = {
 
 export const locationDetails: Record<string, LocationDetail> = {
   arcadia: {
-    description:
-      "A kingdom defined by its monumental capital, royal institutions, and long-established traditions. This section is intentionally kept separate from the map data so the lore can grow without making the map dataset heavier.",
     images: [
       { src: "/locations/west/Arcadia.png", caption: "Arcadia — Capital City" },
       { src: "/locations/west/Arcadia.png", caption: "Royal District" },

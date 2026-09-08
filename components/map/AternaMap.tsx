@@ -566,7 +566,7 @@ export default function AternaMap() {
   return (
     <main
       ref={containerRef}
-      className="relative h-screen w-screen overflow-hidden bg-[#151c20]"
+      className="relative h-dvh w-screen overflow-hidden bg-[#151c20]"
     >
       {/* MAP */}
       {isMounted && initialScale !== null && initialScale > 0 && (
@@ -604,7 +604,7 @@ export default function AternaMap() {
           pinch={{ step: 5 }}
         >
           <TransformComponent
-            wrapperStyle={{ width: "100vw", height: "100vh", overflow: "hidden" }}
+            wrapperStyle={{ width: "100vw", height: "100dvh", overflow: "hidden" }}
             contentStyle={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px` }}
           >
             {/* MAP LAYER: IMAGE + MARKERS + DEBUGGER — semua di layer transform yang sama */}

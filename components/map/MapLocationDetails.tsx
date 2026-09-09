@@ -302,7 +302,7 @@ export default function MapLocationDetails({
             </button>
           </div>
 
-          <div className="mt-7 grid flex-1 gap-8 lg:mt-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
+          <div className="mt-2 grid flex-1 gap-8 lg:mt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
             {/* GALLERY */}
             <div className="flex flex-col lg:sticky lg:top-8 lg:self-start">
               <div className="relative aspect-4/3 overflow-hidden rounded-[28px] bg-black/4 sm:rounded-[34px]">

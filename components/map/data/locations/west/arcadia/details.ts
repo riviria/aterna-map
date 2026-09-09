@@ -2,12 +2,11 @@ import type { LocationDetail } from "../../../types";
 
 export const arcadiaDetails: LocationDetail = {
   images: [
-    { src: "/locations/west/Arcadia.png", caption: { en: "Arcadia — Capital City", id: "Arcadia — Kota Ibu Kota" } },
-    { src: "/locations/west/Arcadia.png", caption: { en: "Royal District", id: "Distrik Kerajaan" } },
-    { src: "/locations/west/Arcadia.png", caption: { en: "Central Palace Grounds", id: "Kawasan Istana Pusat" } },
-    { src: "/locations/west/Arcadia.png", caption: { en: "Western Quarter", id: "Kawasan Barat" } },
-    { src: "/locations/west/Arcadia.png", caption: { en: "Northern Approach", id: "Jalur Pendekatan Utara" } },
-    { src: "/locations/west/Arcadia.png", caption: { en: "Arcadia from Above", id: "Arcadia dari Atas" } },
+    { src: "/locations/west/arcadia/Arcadia.png", caption: { en: "Arcadia Landscape", id: "Lanskap Arcadia" } },
+    { src: "/locations/west/arcadia/westerna.jpeg", caption: { en: "Westerna City", id: "Kota Westerna" } },
+    { src: "/locations/west/arcadia/mother_arcanis.jpeg", caption: { en: "Statue of Mother Arcanis", id: "Monumen Ibu Arcanis" } },
+    { src: "/locations/west/arcadia/elysium.png", caption: { en: "Elysium Field", id: "Medan Elysium" } },
+    { src: "/locations/west/arcadia/capital.jpeg", caption: { en: "Capital of Arcadia", id: "Ibu Kota Arcadia" } },
   ],
   tabs: [
     {

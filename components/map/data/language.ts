@@ -29,6 +29,10 @@ export type LanguageTranslations = {
     capital: string;
     raceComposition: string;
   };
+  cityProfile: {
+    region: string;
+    category: string;
+  };
 };
 
 const translations: Record<Language, LanguageTranslations> = {
@@ -63,6 +67,10 @@ const translations: Record<Language, LanguageTranslations> = {
       capital: "Capital:",
       raceComposition: "Race Composition:",
     },
+    cityProfile: {
+      region: "Region:",
+      category: "Category:",
+    },
   },
   id: {
     searchLocations: "Cari lokasi...",
@@ -94,6 +102,10 @@ const translations: Record<Language, LanguageTranslations> = {
       form: "Bentuk:",
       capital: "Ibu Kota:",
       raceComposition: "Komposisi Ras:",
+    },
+    cityProfile: {
+      region: "Wilayah:",
+      category: "Kategori:",
     },
   },
 };

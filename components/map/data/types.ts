@@ -14,6 +14,11 @@ export type NationProfile = {
   raceComposition: LocalizedText;
 };
 
+export type CityProfile = {
+  region: LocalizedText;
+  category: LocalizedText;
+};
+
 export type MapLocation = {
   id: string;
   name: string;
@@ -23,6 +28,7 @@ export type MapLocation = {
   y: number;
   description: LocalizedText;
   nationProfile?: NationProfile;
+  cityProfile?: CityProfile;
   thumbnail: string;
   href: string;
 };

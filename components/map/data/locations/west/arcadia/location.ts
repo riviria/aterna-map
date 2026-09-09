@@ -25,6 +25,6 @@ export const arcadia: MapLocation = {
       id: "Levien (90%), Dhurin (5%), Manusia (4%), Ras Campuran & Orkin (1%)",
     },
   },
-  thumbnail: "/locations/west/Arcadia.png",
+  thumbnail: "/locations/west/arcadia/Arcadia.png",
   href: "/locations/arcadia",
 };

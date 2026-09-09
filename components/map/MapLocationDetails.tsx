@@ -4,12 +4,15 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 
-import type { MapLocation } from "./data/locations";
+import type { Language } from "./data/language";
+import { getTranslations } from "./data/language";
 import { locationDetails } from "./data/locationDetails";
+import { getLocalizedText, type MapLocation } from "./data/locations";
 import { readSavedDetailState, saveDetailState } from "./data/mapPersistence";
 
 interface MapLocationDetailsProps {
   location: MapLocation;
+  language: Language;
   onClose: () => void;
 }
 
@@ -66,17 +69,19 @@ function ChevronIcon({ direction }: { direction: "left" | "right" }) {
 
 export default function MapLocationDetails({
   location,
+  language,
   onClose,
 }: MapLocationDetailsProps) {
+  const translations = getTranslations(language);
   const detail = locationDetails[location.id];
   const gallery = useMemo(
     () =>
       detail?.images?.length
         ? detail.images
         : location.thumbnail
-          ? [{ src: location.thumbnail, caption: "" }]
+          ? [{ src: location.thumbnail, caption: { en: "", id: "" } }]
           : [],
-    [detail?.images, location.thumbnail]
+    [detail, location.thumbnail]
   );
 
   const tabs = detail?.tabs ?? [];
@@ -153,8 +158,8 @@ export default function MapLocationDetails({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.28, ease: "easeOut" }}
-        className="fixed inset-0 z-[2000] overflow-y-auto bg-[#f4f4f1] text-black"
-        aria-label={`${location.name} details`}
+        className="fixed inset-0 z-2000 overflow-y-auto bg-[#f4f4f1] text-black"
+        aria-label={translations.detailsAriaLabel(location.name)}
       >
         <div className="mx-auto flex min-h-full w-full max-w-[1600px] flex-col px-5 py-5 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
           <div className="flex items-center justify-between gap-4">
@@ -164,14 +169,14 @@ export default function MapLocationDetails({
               className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-black/60 transition hover:text-black sm:text-sm"
             >
               <BackIcon />
-              Back to map
+              {translations.backToMap}
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close details"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-black/[0.03] text-black/60 transition hover:border-black/20 hover:bg-black/[0.06] hover:text-black"
+              aria-label={translations.closeDetails}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-black/3 text-black/60 transition hover:border-black/20 hover:bg-black/6 hover:text-black"
             >
               <CloseIcon />
             </button>
@@ -180,17 +185,17 @@ export default function MapLocationDetails({
           <div className="mt-7 grid flex-1 gap-8 lg:mt-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
             {/* GALLERY */}
             <div className="flex flex-col lg:sticky lg:top-8 lg:self-start">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-black/[0.04] sm:rounded-[34px]">
+              <div className="relative aspect-4/3 overflow-hidden rounded-[28px] bg-black/4 sm:rounded-[34px]">
                 {activeImage ? (
                   <>
                     {!isImageLoaded && (
-                      <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-black/[0.06] via-black/[0.02] to-transparent" />
+                      <div className="absolute inset-0 animate-pulse bg-linear-to-br from-black/6 via-black/2 to-transparent" />
                     )}
 
                     <Image
                       key={`${activeImage.src}-${activeImageIndex}`}
                       src={activeImage.src}
-                      alt={`${location.name} artwork ${activeImageIndex + 1}`}
+                      alt={translations.artworkAlt(location.name, activeImageIndex + 1)}
                       fill
                       priority
                       sizes="(max-width: 1024px) 100vw, 58vw"
@@ -203,13 +208,13 @@ export default function MapLocationDetails({
                     />
                     {isImageLoaded && activeImage.caption && (
                       <div className="absolute bottom-3 right-3 max-w-[75%] rounded-full bg-black/65 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-white/90 backdrop-blur-sm sm:bottom-4 sm:right-4 sm:px-3.5 sm:py-2 sm:text-[11px]">
-                        {activeImage.caption}
+                        {getLocalizedText(activeImage.caption, language)}
                       </div>
                     )}
                   </>
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm uppercase tracking-[0.2em] text-black/30">
-                    No artwork available
+                    {translations.noArtworkAvailable}
                   </div>
                 )}
               </div>
@@ -221,8 +226,8 @@ export default function MapLocationDetails({
                       type="button"
                       onClick={() => shiftGallery("left")}
                       disabled={!hasPreviousGalleryPage}
-                      aria-label="Previous gallery images"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-black/[0.03] text-black/60 transition hover:border-black/20 hover:bg-black/[0.06] hover:text-black disabled:pointer-events-none disabled:opacity-20"
+                      aria-label={translations.previousGalleryImages}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-black/3 text-black/60 transition hover:border-black/20 hover:bg-black/6 hover:text-black disabled:pointer-events-none disabled:opacity-20"
                     >
                       <ChevronIcon direction="left" />
                     </button>
@@ -237,9 +242,9 @@ export default function MapLocationDetails({
                           key={`${image.src}-${index}`}
                           type="button"
                           onClick={() => selectImage(index)}
-                          aria-label={`Show artwork ${index + 1}`}
+                          aria-label={translations.showArtwork(index + 1)}
                           aria-pressed={activeImageIndex === index}
-                          className={`relative aspect-[4/3] min-w-0 overflow-hidden rounded-2xl border transition sm:rounded-2xl ${
+                          className={`relative aspect-4/3 min-w-0 overflow-hidden rounded-2xl border transition sm:rounded-2xl ${
                             activeImageIndex === index
                               ? "border-black"
                               : "border-black/10 opacity-65 hover:opacity-100"
@@ -247,7 +252,7 @@ export default function MapLocationDetails({
                         >
                           <Image
                             src={image.src}
-                            alt={`${location.name} thumbnail ${index + 1}`}
+                            alt={translations.thumbnailAlt(location.name, index + 1)}
                             fill
                             sizes="(max-width: 640px) 22vw, 180px"
                             draggable={false}
@@ -268,8 +273,8 @@ export default function MapLocationDetails({
                       type="button"
                       onClick={() => shiftGallery("right")}
                       disabled={!hasNextGalleryPage}
-                      aria-label="Next gallery images"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-black/[0.03] text-black/60 transition hover:border-black/20 hover:bg-black/[0.06] hover:text-black disabled:pointer-events-none disabled:opacity-20"
+                      aria-label={translations.nextGalleryImages}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-black/3 text-black/60 transition hover:border-black/20 hover:bg-black/6 hover:text-black disabled:pointer-events-none disabled:opacity-20"
                     >
                       <ChevronIcon direction="right" />
                     </button>
@@ -282,7 +287,7 @@ export default function MapLocationDetails({
             <div className="flex min-w-0 flex-col lg:pt-1">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-black/40 sm:text-xs">
-                  {location.type}
+                  {translations.locationTypes[location.type]}
                 </p>
                 <h1 className="mt-3 text-4xl font-medium tracking-[-0.04em] sm:text-5xl lg:text-6xl">
                   {location.name}
@@ -292,17 +297,21 @@ export default function MapLocationDetails({
                   <div className="mt-8 border-t border-black/70">
                     <div className="divide-y divide-black/20">
                       <div className="grid gap-2 py-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-6">
-                        <span className="text-sm text-black/50">Form:</span>
-                        <span className="text-sm sm:text-base">{location.nationProfile.form}</span>
+                        <span className="text-sm text-black/50">{translations.nationProfile.form}</span>
+                        <span className="text-sm sm:text-base">
+                          {getLocalizedText(location.nationProfile.form, language)}
+                        </span>
                       </div>
                       <div className="grid gap-2 py-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-6">
-                        <span className="text-sm text-black/50">Capital:</span>
-                        <span className="text-sm sm:text-base">{location.nationProfile.capital}</span>
+                        <span className="text-sm text-black/50">{translations.nationProfile.capital}</span>
+                        <span className="text-sm sm:text-base">
+                          {getLocalizedText(location.nationProfile.capital, language)}
+                        </span>
                       </div>
                       <div className="grid gap-2 py-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-6">
-                        <span className="text-sm text-black/50">Race Composition:</span>
+                        <span className="text-sm text-black/50">{translations.nationProfile.raceComposition}</span>
                         <span className="text-sm leading-6 sm:text-base">
-                          {location.nationProfile.raceComposition}
+                          {getLocalizedText(location.nationProfile.raceComposition, language)}
                         </span>
                       </div>
                     </div>
@@ -312,7 +321,7 @@ export default function MapLocationDetails({
 
               {detail?.description && (
                 <p className="mt-8 max-w-3xl text-base leading-7 text-black/70 sm:mt-10 sm:text-lg sm:leading-8">
-                  {detail.description}
+                  {getLocalizedText(detail.description, language)}
                 </p>
               )}
 
@@ -335,15 +344,15 @@ export default function MapLocationDetails({
                           activeTab?.id === tab.id ? "text-black" : "text-black/40 hover:text-black/70"
                         }`}
                       >
-                        {tab.label}
+                        {getLocalizedText(tab.label, language)}
                         {activeTab?.id === tab.id && (
-                          <span className="absolute inset-x-0 bottom-[-1px] h-px bg-black" />
+                          <span className="absolute inset-x-0 bottom-px h-px bg-black" />
                         )}
                       </button>
                     ))}
                   </div>
 
-                  <div className="mt-6 min-h-[260px] sm:min-h-[320px]">
+                  <div className="mt-6 min-h-65 sm:min-h-80">
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={activeTab?.id ?? "empty"}
@@ -352,7 +361,7 @@ export default function MapLocationDetails({
                         exit={{ opacity: 0, y: -4 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                       >
-                        {activeTab?.content.map((paragraph, index) => (
+                        {activeTab?.content[language].map((paragraph, index) => (
                           <p
                             key={`${activeTab.id}-${index}`}
                             className="max-w-3xl whitespace-pre-line text-base leading-8 text-black/75 sm:text-lg sm:leading-9"

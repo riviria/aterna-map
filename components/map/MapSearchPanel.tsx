@@ -2,19 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { Language } from "./data/language";
+import { getTranslations } from "./data/language";
 import type { LocationType, MapLocation } from "./data/locations";
-
-const TYPE_LABELS: Record<LocationType, string> = {
-  nation: "Nation",
-  city: "City",
-  landmark: "Landmark",
-  geography: "Geography",
-};
 
 const TYPE_ORDER: LocationType[] = ["nation", "city", "landmark", "geography"];
 
 type MapSearchPanelProps = {
   locations: MapLocation[];
+  language: Language;
   activeTypes: Set<LocationType>;
   onToggleType: (type: LocationType) => void;
   onSelectLocation: (locationId: string) => void;
@@ -55,10 +51,13 @@ function CloseIcon() {
 
 export default function MapSearchPanel({
   locations,
+  language,
   activeTypes,
   onToggleType,
   onSelectLocation,
 }: MapSearchPanelProps) {
+  const translations = getTranslations(language);
+
   const [query, setQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -119,7 +118,7 @@ export default function MapSearchPanel({
               setIsSearchFocused(true);
             }}
             onFocus={() => setIsSearchFocused(true)}
-            placeholder="Search locations..."
+            placeholder={translations.searchLocations}
             autoComplete="off"
             className="w-full rounded-full border border-white/10 bg-black/70 px-4 py-2.5 pr-10 text-sm text-white placeholder-white/40 shadow-lg backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-red-400/60"
           />
@@ -129,7 +128,7 @@ export default function MapSearchPanel({
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={clearSearch}
-              aria-label="Clear search"
+              aria-label={translations.clearSearch}
               className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-white/35 transition hover:text-white/80"
             >
               <CloseIcon />
@@ -139,7 +138,7 @@ export default function MapSearchPanel({
           {showResults && (
             <div className="absolute left-0 right-0 top-full mt-2 max-h-[45vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#1c2226]/95 shadow-2xl backdrop-blur-md">
               {results.length === 0 ? (
-                <p className="px-4 py-3 text-sm text-white/50">No locations found.</p>
+                <p className="px-4 py-3 text-sm text-white/50">{translations.noLocationsFound}</p>
               ) : (
                 results.map((location) => (
                   <button
@@ -151,7 +150,7 @@ export default function MapSearchPanel({
                   >
                     <span className="truncate">{location.name}</span>
                     <span className="ml-2 shrink-0 text-xs uppercase tracking-wide text-white/40">
-                      {TYPE_LABELS[location.type]}
+                      {translations.locationTypes[location.type]}
                     </span>
                   </button>
                 ))
@@ -165,7 +164,7 @@ export default function MapSearchPanel({
           <button
             type="button"
             onClick={() => setIsFilterOpen((current) => !current)}
-            aria-label="Filter location types"
+            aria-label={translations.filterLocationTypes}
             aria-expanded={isFilterOpen}
             className={`relative flex h-[42px] w-[42px] items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition ${
               isFilterOpen
@@ -191,7 +190,7 @@ export default function MapSearchPanel({
                     onClick={() => onToggleType(type)}
                     className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm text-white/80 transition hover:bg-white/5"
                   >
-                    <span>{TYPE_LABELS[type]}</span>
+                    <span>{translations.locationTypes[type]}</span>
                     <span
                       className={`h-4 w-4 rounded border ${
                         isActive

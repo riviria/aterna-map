@@ -79,7 +79,7 @@ export default function MapFullscreenButton({ targetRef }: MapFullscreenButtonPr
       onClick={toggleFullscreen}
       aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
       title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-      className="absolute bottom-5 right-[72px] z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/70 text-white/80 shadow-lg backdrop-blur-md transition hover:bg-black/90 hover:text-white"
+      className="absolute bottom-5 right-18 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/70 text-white/80 shadow-lg backdrop-blur-md transition hover:bg-black/90 hover:text-white"
     >
       {isFullscreen ? <FullscreenExitIcon /> : <FullscreenEnterIcon />}
     </button>

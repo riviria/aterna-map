@@ -3,10 +3,13 @@
 import Image from "next/image";
 import { forwardRef, useEffect, useState } from "react";
 
-import type { MapLocation, NationProfile } from "./data/locations";
+import type { Language } from "./data/language";
+import { getTranslations } from "./data/language";
+import { getLocalizedText, type MapLocation, type NationProfile } from "./data/locations";
 
 interface MapLocationPopupProps {
   location: MapLocation;
+  language: Language;
   x: number;
   y: number;
   onMouseEnter: () => void;
@@ -15,10 +18,10 @@ interface MapLocationPopupProps {
   onViewDetails: () => void;
 }
 
-const NATION_PROFILE_ROWS: { label: string; key: keyof NationProfile }[] = [
-  { label: "Form:", key: "form" },
-  { label: "Capital:", key: "capital" },
-  { label: "Race Composition:", key: "raceComposition" },
+const NATION_PROFILE_KEYS: (keyof NationProfile)[] = [
+  "form",
+  "capital",
+  "raceComposition",
 ];
 
 function ShareIcon() {
@@ -42,17 +45,13 @@ function ShareIcon() {
 
 const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
   function MapLocationPopup(
-    { location, x, y, onMouseEnter, onMouseLeave, onClose, onViewDetails },
+    { location, language, x, y, onMouseEnter, onMouseLeave, onClose, onViewDetails },
     ref
   ) {
+    const translations = getTranslations(language);
     const nationProfile = location.nationProfile;
     const [isImageLoaded, setIsImageLoaded] = useState(false);
     const [shareFeedback, setShareFeedback] = useState<"copied" | "error" | null>(null);
-
-    useEffect(() => {
-      setIsImageLoaded(false);
-      setShareFeedback(null);
-    }, [location.id]);
 
     useEffect(() => {
       if (!shareFeedback) return;
@@ -67,7 +66,7 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
 
       const shareData = {
         title: location.name,
-        text: `Explore ${location.name} in the Aterna Interactive World Atlas.`,
+        text: translations.shareText(location.name),
         url: url.toString(),
       };
 
@@ -120,7 +119,7 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
         <div className="relative px-5 pb-6 pt-5 sm:px-7 sm:pb-7 sm:pt-6">
           <button
             type="button"
-            aria-label="Close popup"
+            aria-label={translations.closePopup}
             onClick={(event) => {
               event.stopPropagation();
               onClose();
@@ -131,7 +130,7 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
           </button>
 
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.35em] text-white/50">
-            {location.type}
+            {translations.locationTypes[location.type]}
           </p>
 
           <h2 className="pr-8 text-2xl font-bold tracking-tight text-white sm:text-3xl">
@@ -140,23 +139,23 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
 
           {location.type === "nation" && nationProfile ? (
             <div className="mt-3 overflow-hidden rounded-xl border border-white/10 sm:mt-3">
-              {NATION_PROFILE_ROWS.map(({ label, key }) => (
+              {NATION_PROFILE_KEYS.map((key) => (
                 <div
                   key={key}
                   className="flex flex-col gap-1.5 border-b border-white/10 px-2 py-1 last:border-b-0"
                 >
                   <span className="text-xs font-bold uppercase tracking-wide text-white/40">
-                    {label}
+                    {translations.nationProfile[key]}
                   </span>
                   <span className="text-sm leading-6 text-white/80">
-                    {nationProfile[key]}
+                    {getLocalizedText(nationProfile[key], language)}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
             <p className="mt-4 text-sm leading-7 text-white/70 sm:mt-5 sm:text-base sm:leading-8">
-              {location.description}
+              {getLocalizedText(location.description, language)}
             </p>
           )}
 
@@ -170,10 +169,10 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
             >
               <ShareIcon />
               {shareFeedback === "copied"
-                ? "Link copied"
+                ? translations.linkCopied
                 : shareFeedback === "error"
-                  ? "Share failed"
-                  : "Share"}
+                  ? translations.shareFailed
+                  : translations.share}
             </button>
 
             <button
@@ -184,7 +183,7 @@ const MapLocationPopup = forwardRef<HTMLDivElement, MapLocationPopupProps>(
               }}
               className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.25em] text-white transition hover:text-red-400 sm:text-sm"
             >
-              VIEW DETAILS
+              {translations.viewDetails}
               <span className="text-lg">→</span>
             </button>
           </div>

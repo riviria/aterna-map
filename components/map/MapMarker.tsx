@@ -132,7 +132,7 @@ export default function MapMarker({
       onClick={handleClick}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      {focused && <span className="pointer-events-none absolute inset-[-9px] rounded-full border border-white/70 animate-ping" />}
+      {focused && <span className="pointer-events-none absolute inset-2.25 rounded-full border border-white/70 animate-ping" />}
       <MarkerIcon type={location.type} />
     </button>
   );

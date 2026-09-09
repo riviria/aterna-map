@@ -13,12 +13,19 @@ import MapFullscreenButton from "./MapFullscreenButton";
 import MapCoordinatePanel from "./MapCoordinatePanel";
 import MapLoadingOverlay from "./MapLoadingOverlay";
 import MapLabel from "./MapLabel";
+import MapLanguageToggle from "./MapLanguageToggle";
 import MapMinimap from "./MapMinimap";
 import MapLocationPopup from "./MapLocationPopup";
 import MapLocationDetails from "./MapLocationDetails";
 import MapLocations from "./MapLocations";
 import MapResetButton from "./MapResetButton";
 import MapSearchPanel from "./MapSearchPanel";
+import {
+  readSavedLanguage,
+  saveLanguage,
+  subscribeLanguage,
+  type Language,
+} from "./data/language";
 import { locations, type LocationType, type MapLocation } from "./data/locations";
 import {
   clearSavedDetailState,
@@ -130,6 +137,14 @@ export default function AternaMap() {
   // Saat coordinate debugger di-drag, panning map dimatikan sementara.
   const [isDraggingDebugger, setIsDraggingDebugger] = useState(false);
 
+  // Bahasa memakai useSyncExternalStore agar server dan client selalu
+  // memakai snapshot awal yang sama saat hydration. Setelah hydration,
+  // preferensi dari localStorage akan diterapkan secara aman.
+  const language = useSyncExternalStore(
+    subscribeLanguage,
+    readSavedLanguage,
+    (): Language => "en"
+  );
   const [supportsHover, setSupportsHover] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [activeLocationId, setActiveLocationId] = useState<string | null>(
@@ -311,6 +326,8 @@ export default function AternaMap() {
     if (!target) return;
 
     clearCloseTimer();
+    setActiveLocationId(null);
+    setPopupPosition(null);
     setDetailLocationId(locationId);
     saveDetailState({ locationId });
   }, [clearCloseTimer]);
@@ -318,7 +335,8 @@ export default function AternaMap() {
   const closeLocationDetails = useCallback(() => {
     setDetailLocationId(null);
     clearSavedDetailState();
-  }, []);
+    closeLocation();
+  }, [closeLocation]);
 
   const toggleType = useCallback((type: LocationType) => {
     setActiveTypes((current) => {
@@ -563,6 +581,10 @@ export default function AternaMap() {
     };
   }, []);
 
+  const handleLanguageChange = (nextLanguage: Language) => {
+    saveLanguage(nextLanguage);
+  };
+
   return (
     <main
       ref={containerRef}
@@ -687,6 +709,7 @@ export default function AternaMap() {
       {/* FIXED SEARCH & FILTER — tidak ikut zoom */}
       <MapSearchPanel
         locations={locations}
+        language={language}
         activeTypes={activeTypes}
         onToggleType={toggleType}
         onSelectLocation={focusLocation}
@@ -698,11 +721,20 @@ export default function AternaMap() {
       {/* FIXED RESET VIEW BUTTON — tidak ikut zoom */}
       <MapResetButton onReset={handleResetView} />
 
+      {/* FIXED LANGUAGE TOGGLE — dikelompokkan dengan reset & fullscreen di kanan-bawah
+          agar tidak tertindih dropdown hasil pencarian di layar mobile */}
+      <MapLanguageToggle
+        language={language}
+        onChange={handleLanguageChange}
+      />
+
       {/* FIXED POPUP — di luar TransformWrapper agar tidak ikut membesar saat zoom */}
       {activeLocation && popupPosition && (
         <MapLocationPopup
+          key={activeLocation.id}
           ref={popupRef}
           location={activeLocation}
+          language={language}
           x={popupPosition.x}
           y={popupPosition.y}
           onMouseEnter={() => clearCloseTimer()}
@@ -716,8 +748,8 @@ export default function AternaMap() {
 
       {isMounted && detailLocation && (
         <MapLocationDetails
-          key={detailLocation.id}
           location={detailLocation}
+          language={language}
           onClose={closeLocationDetails}
         />
       )}

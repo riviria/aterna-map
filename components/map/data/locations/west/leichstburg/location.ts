@@ -11,6 +11,6 @@ export const leichstburg: MapLocation = {
     en: "A prosperous city surrounded by fertile lands and ancient mountain routes.",
     id: "Sebuah kota makmur yang dikelilingi tanah subur dan jalur pegunungan kuno.",
   },
-  thumbnail: "/locations/west/Leichstburg.png",
-  href: "/locations/west/Leichstburg",
+  thumbnail: "/locations/west/leichtsburg/leichstburg.png",
+  href: "/locations/west/leichtsburg",
 };

@@ -11,6 +11,6 @@ export const mountArgon: MapLocation = {
     en: "A mountainous highland region in Viremont, known as one of the most historic and sacred places in the Western Continent.",
     id: "Wilayah dataran tinggi bergunung di kawasan Viremont yang dikenal sebagai salah satu tempat paling bersejarah dan paling sakral di Benua Barat.",
   },
-  thumbnail: "/locations/west/Mt. Argon.png",
+  thumbnail: "/locations/west/argon/argon.png",
   href: "/locations/west/Mt-Argon",
 };

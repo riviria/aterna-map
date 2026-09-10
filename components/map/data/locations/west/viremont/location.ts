@@ -11,6 +11,6 @@ export const viremont: MapLocation = {
     en: "A strategic settlement located near the western mountain ranges.",
     id: "Sebuah permukiman strategis yang terletak di dekat jajaran pegunungan barat.",
   },
-  thumbnail: "/locations/west/Viremont.png",
-  href: "/locations/west/Viremont",
+  thumbnail: "/locations/west/viremont/viremont.png",
+  href: "/locations/west/viremont",
 };
